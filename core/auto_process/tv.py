@@ -431,15 +431,14 @@ def process(section, dir_name, input_name=None, failed=False, client_agent='manu
             try:
                 print(f"Raw response: {r.text}")
                 response_json = r.json()
+                if response_json.get('result') == 'success':
+                    success = True
             except ValueError as e:
                 print(f"JSON decoding error: {e}")
-            return ProcessResult(
-                message=f"{section}: Failed to post-process - JSON decoding error.",
-                status_code=1,
-            )
-
-            if r.json()['result'] == 'success':
-                success = True
+                return ProcessResult(
+                    message=f"{section}: Failed to post-process - JSON decoding error.",
+                    status_code=1,
+                )
         else:
             for line in r.iter_lines():
                 if line:
