@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Trigger post-processing via API for SABnzbd downloads.
 
 This script is intended to be called by SABnzbd as a post-processing
@@ -19,13 +19,17 @@ base URL (``http://localhost:8080``).
 import json
 import os
 import sys
-import urllib.parse
-import urllib.request
+try:  # Python 3
+    import urllib.parse as urlparse
+    import urllib.request as urlrequest
+except ImportError:  # Python 2
+    import urllib as urlparse
+    import urllib2 as urlrequest
 
-API_KEY = "a7d6b10fd3c974b0dc5035a3d838eb38"
+API_KEY = os.environ.get("SAB_API_KEY", "a7d6b10fd3c974b0dc5035a3d838eb38")
 
 
-def build_url(base_url: str, path: str) -> str:
+def build_url(base_url, path):
     params = {
         "cmd": "postprocess",
         "path": path,
@@ -34,13 +38,14 @@ def build_url(base_url: str, path: str) -> str:
         "process_method": "move",
         "delete": 1,
     }
-    query = urllib.parse.urlencode(params)
-    return f"{base_url.rstrip('/')}/api/{API_KEY}/?{query}"
+    query = urlparse.urlencode(params)
+    base = base_url.rstrip('/')
+    return "%s/api/%s/?%s" % (base, API_KEY, query)
 
 
-def main(argv: list[str]) -> int:
+def main(argv):
     if len(argv) < 2:
-        print(f"Usage: {argv[0]} <path>", file=sys.stderr)
+        print("Usage: %s <path>" % argv[0], file=sys.stderr)
         return 1
 
     download_path = argv[1]
@@ -48,10 +53,13 @@ def main(argv: list[str]) -> int:
     url = build_url(base_url, download_path)
 
     try:
-        with urllib.request.urlopen(url) as response:
+        response = urlrequest.urlopen(url)
+        try:
             data = response.read()
+        finally:
+            response.close()
     except Exception as exc:
-        print(f"Failed to post-process: {exc}", file=sys.stderr)
+        print("Failed to post-process: %s" % exc, file=sys.stderr)
         return 1
 
     if not data:
@@ -67,4 +75,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    exit(main(sys.argv))
